@@ -1,0 +1,11 @@
+apt-transport-https
+curl 
+gnupg 
+lsb-release 
+cmake 
+build-essential 
+gettext-base 
+coreutils
+
+ros-jazzy-desktop
+ros-jazzy-rmw-cyclonedds-cpp

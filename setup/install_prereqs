@@ -1,0 +1,50 @@
+#!/bin/bash
+
+set -eux pipefail
+
+apt update && apt install apt-transport-https curl gnupg lsb-release cmake build-essential gettext-base coreutils
+
+ROS_DISTRO=jazzy
+DRAKE_VERSION=1.43.0
+
+DRAKE_CHECKSUM="635c125187c6758b1bfc7698b59f6f9bfc64a902575e191cccce74be8c6f47ee"
+UBUNTU_CODENAME=$(. /etc/os-release && echo $VERSION_CODENAME)
+
+DRAKE_SOURCE_NAME=drake-${DRAKE_VERSION}-source
+DRAKE_SOURCE_CHECKSUM_FILE=${DRAKE_CHECKSUM_DIR}/${DRAKE_SOURCE_NAME}.sha256
+
+# Install ROS tooling as described in https://docs.ros.org/en/jazzy/Installation/Ubuntu-Install-Debs.html
+curl -L -o /tmp/drake-${DRAKE_VERSION}-source.tar.gz \
+  https://github.com/RobotLocomotion/drake/archive/${DRAKE_COMMIT}.tar.gz
+(cd /tmp && cat ${DRAKE_SOURCE_CHECKSUM_FILE} | sha256sum --check --status)
+mkdir -p /tmp/drake && tar -xzf /tmp/drake-${DRAKE_VERSION}-source.tar.gz -C /tmp/drake --strip-components 1
+/tmp/drake/setup/install_prereqs --with-bazel
+
+DRAKE_BINARY_NAME=drake-${DRAKE_VERSION}-${UBUNTU_CODENAME}
+DRAKE_BINARY_CHECKSUM_FILE=${DRAKE_BINARY_NAME}.tar.gz.sha256
+curl -fsSL -o /tmp/${DRAKE_BINARY_NAME}.tar.gz \
+  https://github.com/RobotLocomotion/drake/releases/download/v${DRAKE_VERSION}/${DRAKE_BINARY_NAME}.tar.gz
+echo "$(cat ${DRAKE_BINARY_CHECKSUM_FILE}) /tmp/${DRAKE_BINARY_NAME}.tar.gz" | sha256sum --check --status
+tar -xzf /tmp/${DRAKE_BINARY_NAME}.tar.gz -C /opt/drake --strip-components 1
+
+# Install ROS tooling as described in https://docs.ros.org/en/jazzy/Installation/Ubuntu-Install-Debs.html
+apt update && apt install locales
+locale-gen en_US en_US.UTF-8
+update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
+export LANG=en_US.UTF-8
+
+apt install software-properties-common
+add-apt-repository universe
+
+ROS_APT_SOURCE_VERSION=1.1.0
+ROS_APT_SOURCE_BINARY_NAME=ros2-apt-source_${ROS_APT_SOURCE_VERSION}.${UBUNTU_CODENAME}_all
+
+curl -L -o /tmp/${ROS_APT_SOURCE_BINARY_NAME}.deb \
+  "https://github.com/ros-infrastructure/ros-apt-source/releases/download/${ROS_APT_SOURCE_VERSION}/${ROS_APT_SOURCE_BINARY_NAME}.deb"
+dpkg -i /tmp/${ROS_APT_SOURCE_BINARY_NAME}.deb
+
+apt install $(cat ${SETUP_DIRPATH}/packages-apt.txt)
+for a in ; do
+  apt install ${cat ${SETUP_DIRPATH}/packages-apt.txt}
+done
+apt install $(cat /tmp/packages-apt.txt)
